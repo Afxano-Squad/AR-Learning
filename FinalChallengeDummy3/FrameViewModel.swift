@@ -33,7 +33,7 @@ class FrameViewModel: ObservableObject {
             modelEntity.transform.matrix = finalTransform
             arView.scene.addAnchor(modelEntity)
             model.anchor = modelEntity
-            startLiveAlignmentCheck(arView: arView) // alignment check, start.
+            startLiveAlignmentCheck(arView: arView)
         }
     }
 
@@ -48,17 +48,23 @@ class FrameViewModel: ObservableObject {
 
     // nge init frame
     private func createPhotoFrame() -> AnchorEntity {
-        let frameThickness: Float = 0.005
+        // Atur ketebalan bingkai dan ukurannya
+        let frameThickness: Float = 0.005  // Tebal frame pada x dan y (tinggi dan lebar)
+        let depthThickness: Float = 0.05   // Tebal bingkai dalam dimensi z (kedalaman)
         let outerSize: Float = 0.2
-        let material = SimpleMaterial(color: .black, isMetallic: true)
 
-        let top = ModelEntity(mesh: MeshResource.generateBox(size: [outerSize, frameThickness, frameThickness]), materials: [material])
-        let bottom = ModelEntity(mesh: MeshResource.generateBox(size: [outerSize, frameThickness, frameThickness]), materials: [material])
-        let left = ModelEntity(mesh: MeshResource.generateBox(size: [frameThickness, outerSize, frameThickness]), materials: [material])
-        let right = ModelEntity(mesh: MeshResource.generateBox(size: [frameThickness, outerSize, frameThickness]), materials: [material])
+        // Material untuk frame
+        let material = SimpleMaterial(color: .white, isMetallic: true)
+
+        let top = ModelEntity(mesh: MeshResource.generateBox(size: [outerSize, frameThickness, depthThickness]), materials: [material])
+        let bottom = ModelEntity(mesh: MeshResource.generateBox(size: [outerSize, frameThickness, depthThickness]), materials: [material])
+
+        let left = ModelEntity(mesh: MeshResource.generateBox(size: [frameThickness, outerSize, depthThickness]), materials: [material])
+        let right = ModelEntity(mesh: MeshResource.generateBox(size: [frameThickness, outerSize, depthThickness]), materials: [material])
 
         top.position = [0, (outerSize - frameThickness) / 2, 0]
         bottom.position = [0, -(outerSize - frameThickness) / 2, 0]
+
         left.position = [-(outerSize - frameThickness) / 2, 0, 0]
         right.position = [(outerSize - frameThickness) / 2, 0, 0]
 
@@ -71,6 +77,7 @@ class FrameViewModel: ObservableObject {
         return anchor
     }
 
+
     // Memulai pengecekan alignment secara berkala
     private func startLiveAlignmentCheck(arView: ARView) {
         timer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { _ in
@@ -78,7 +85,6 @@ class FrameViewModel: ObservableObject {
         }
     }
 
-    // Menghentikan pengecekan alignment secara berkala
     private func stopLiveAlignmentCheck() {
         timer?.invalidate()
         timer = nil
@@ -95,7 +101,7 @@ class FrameViewModel: ObservableObject {
         let distance = simd_distance(anchorPosition, cameraPosition)
         
         let acceptableDistance: Float = 0.5 //  50 cm
-        let acceptableAngle: Float = 15.0 //  15 derajat
+        let acceptableAngle: Float = 25.0 //  15 derajat
 
         if distance <= acceptableDistance {
             let cameraForward = cameraTransform.columns.2

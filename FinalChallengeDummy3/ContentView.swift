@@ -49,7 +49,9 @@ struct ContentView: View {
 
                     // Frame toggle button
                     Button(action: {
-                        viewModel.toggleFrame(at: arView)
+                        
+                        // actionnya
+                    
                     }) {
                         Circle()
                             .fill(Color.white)
@@ -63,15 +65,14 @@ struct ContentView: View {
 
                     Spacer()
 
-                    // Flip camera button
+                    // Lock Button
+                    
                     Button(action: {
                         
-                        
-                        // Action to flip camera
-                        
-                        
+                            viewModel.toggleFrame(at: arView)
+                   
                     }) {
-                        Image(systemName: "arrow.trianglehead.left.and.right.righttriangle.left.righttriangle.right")
+                        Image(systemName: "lock.square.fill")
                             .resizable()
                             .frame(width: 40, height: 40)
                             .foregroundColor(.white)
