@@ -13,12 +13,74 @@ import ARKit
 class FrameViewModel: ObservableObject {
     @Published var model = FrameModel()
     private var timer: Timer?
+    let cameraController = CameraController()
 
     func toggleFrame(at arView: ARView) {
         if model.anchor != nil {
             removeFrame(from: arView)
         } else {
             addFrame(to: arView)
+        }
+    }
+    
+    
+    func capturePhoto(from arView: ARView) {
+        // Hentikan ARSession untuk melepaskan kontrol kamera
+        arView.session.pause()
+        print("AR Dihentikan")
+        
+        DispatchQueue.global(qos: .background).async {
+
+            self.cameraController.captureSession?.startRunning()
+            
+            DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 1.0) {
+                
+                print(self.cameraController.captureSession == nil)
+                
+                
+                self.cameraController.capturePhoto { [weak self] image in
+                    print(image == nil)
+                    guard let self = self, let image = image else {
+                        print("Failed to capture photo")
+                        
+                        DispatchQueue.main.async {
+                            print("AR Dijalankan balik")
+                            arView.session.run(ARWorldTrackingConfiguration())
+                        }
+                        return
+                    }
+                    print("Gambar berhasil diambhil")
+                    // Simpan foto di galeri di background thread
+                    DispatchQueue.global(qos: .background).async {
+                        UIImageWriteToSavedPhotosAlbum(image, self, nil, nil)
+                        
+                        // Setelah penyimpanan, restart ARSession
+                        DispatchQueue.main.async {
+                            print("AR dijalankan balik")
+                            arView.session.run(ARWorldTrackingConfiguration())
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+
+
+    // Selector method for handling image save completion (only one declaration)
+    @objc private func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
+        DispatchQueue.main.async {
+            if let error = error {
+                print("Error saving photo: \(error.localizedDescription)")
+            } else {
+                print("Photo successfully saved to gallery")
+            }
+            
+            // Restart ARSession after saving photo
+            if let arView = self.model.anchor?.scene?.findEntity(named: "arView") as? ARView {
+                arView.session.run(ARWorldTrackingConfiguration())
+            }
         }
     }
 
@@ -48,23 +110,17 @@ class FrameViewModel: ObservableObject {
 
     // nge init frame
     private func createPhotoFrame() -> AnchorEntity {
-        // Atur ketebalan bingkai dan ukurannya
-        let frameThickness: Float = 0.005  // Tebal frame pada x dan y (tinggi dan lebar)
-        let depthThickness: Float = 0.05   // Tebal bingkai dalam dimensi z (kedalaman)
+        let frameThickness: Float = 0.005
         let outerSize: Float = 0.2
+        let material = SimpleMaterial(color: .black, isMetallic: true)
 
-        // Material untuk frame
-        let material = SimpleMaterial(color: .white, isMetallic: true)
-
-        let top = ModelEntity(mesh: MeshResource.generateBox(size: [outerSize, frameThickness, depthThickness]), materials: [material])
-        let bottom = ModelEntity(mesh: MeshResource.generateBox(size: [outerSize, frameThickness, depthThickness]), materials: [material])
-
-        let left = ModelEntity(mesh: MeshResource.generateBox(size: [frameThickness, outerSize, depthThickness]), materials: [material])
-        let right = ModelEntity(mesh: MeshResource.generateBox(size: [frameThickness, outerSize, depthThickness]), materials: [material])
+        let top = ModelEntity(mesh: MeshResource.generateBox(size: [outerSize, frameThickness, frameThickness]), materials: [material])
+        let bottom = ModelEntity(mesh: MeshResource.generateBox(size: [outerSize, frameThickness, frameThickness]), materials: [material])
+        let left = ModelEntity(mesh: MeshResource.generateBox(size: [frameThickness, outerSize, frameThickness]), materials: [material])
+        let right = ModelEntity(mesh: MeshResource.generateBox(size: [frameThickness, outerSize, frameThickness]), materials: [material])
 
         top.position = [0, (outerSize - frameThickness) / 2, 0]
         bottom.position = [0, -(outerSize - frameThickness) / 2, 0]
-
         left.position = [-(outerSize - frameThickness) / 2, 0, 0]
         right.position = [(outerSize - frameThickness) / 2, 0, 0]
 
@@ -77,14 +133,14 @@ class FrameViewModel: ObservableObject {
         return anchor
     }
 
-
     // Memulai pengecekan alignment secara berkala
     private func startLiveAlignmentCheck(arView: ARView) {
         timer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { _ in
-            self.checkOverlayColor(arView: arView) // Panggil fungsi pengecekan penjajaran
+            self.checkOverlayColor(arView: arView)
         }
     }
 
+    // Menghentikan pengecekan alignment secara berkala
     private func stopLiveAlignmentCheck() {
         timer?.invalidate()
         timer = nil
@@ -100,8 +156,8 @@ class FrameViewModel: ObservableObject {
 
         let distance = simd_distance(anchorPosition, cameraPosition)
         
-        let acceptableDistance: Float = 0.5 //  50 cm
-        let acceptableAngle: Float = 25.0 //  15 derajat
+        let acceptableDistance: Float = 0.5
+        let acceptableAngle: Float = 15.0
 
         if distance <= acceptableDistance {
             let cameraForward = cameraTransform.columns.2
