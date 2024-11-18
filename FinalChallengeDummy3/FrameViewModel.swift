@@ -66,8 +66,6 @@ class FrameViewModel: ObservableObject {
     }
 
 
-
-
     // Selector method for handling image save completion (only one declaration)
     @objc private func image(_ image: UIImage, didFinishSavingWithError error: Error?, contextInfo: UnsafeRawPointer) {
         DispatchQueue.main.async {
